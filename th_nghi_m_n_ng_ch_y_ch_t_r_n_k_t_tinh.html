@@ -1,0 +1,827 @@
+<!DOCTYPE html>
+<html lang="vi" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Thí Nghiệm Nóng Chảy Các Chất Rắn Kết Tinh</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        ice: '#38bdf8',
+                        crystal: '#a855f7',
+                        brand: {
+                            800: '#1e293b',
+                            900: '#0f172a',
+                            950: '#020617'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+        .glass-panel {
+            background: rgba(30, 41, 59, 0.75);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        .glow-ice {
+            box-shadow: 0 0 20px rgba(56, 189, 248, 0.2);
+        }
+        .glow-crystal {
+            box-shadow: 0 0 20px rgba(168, 85, 247, 0.2);
+        }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col">
+
+    <header class="border-b border-slate-800 bg-slate-900/90 sticky top-0 z-50 backdrop-blur-md">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="p-2.5 bg-gradient-to-tr from-purple-600 to-sky-500 rounded-xl shadow-lg">
+                    <i class="fa-solid fa-gem text-xl text-white"></i>
+                </div>
+                <div>
+                    <h1 class="text-lg font-extrabold text-white leading-tight">Mô Phỏng Nóng Chảy: Các Chất Rắn Kết Tinh</h1>
+                    <p class="text-xs text-purple-400 font-medium">Nước Đá (0°C) vs Băng Phiến (80°C) / Gallium (29.8°C)</p>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-2">
+                <button id="btnPlay" onclick="toggleHeating()" class="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-sm transition flex items-center gap-2 shadow-lg shadow-emerald-900/40">
+                    <i class="fa-solid fa-play" id="playIcon"></i> <span id="playText">Bắt Đầu Đun</span>
+                </button>
+                <button onclick="resetSim()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold rounded-xl text-sm transition border border-slate-700 flex items-center gap-1.5">
+                    <i class="fa-solid fa-rotate-left"></i> Làm Mới
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+
+        <!-- Top Controls & Power Settings -->
+        <div class="glass-panel p-4 rounded-2xl flex flex-wrap items-center justify-between gap-4 border border-slate-800">
+            <!-- Mode Switcher -->
+            <div class="flex items-center gap-2 bg-slate-900 p-1.5 rounded-xl border border-slate-800">
+                <button id="tabBoth" onclick="setMode('both')" class="px-4 py-2 rounded-lg text-xs font-bold transition bg-purple-600 text-white shadow">
+                    <i class="fa-solid fa-columns mr-1.5"></i> So Sánh Song Song
+                </button>
+                <button id="tabIce" onclick="setMode('mat1')" class="px-4 py-2 rounded-lg text-xs font-bold transition text-slate-400 hover:text-white">
+                    🧊 Cốc Thí Nghiệm 1
+                </button>
+                <button id="tabCrystal" onclick="setMode('mat2')" class="px-4 py-2 rounded-lg text-xs font-bold transition text-slate-400 hover:text-white">
+                    🔮 Cốc Thí Nghiệm 2
+                </button>
+            </div>
+
+            <!-- Flame Power Slider -->
+            <div class="flex items-center gap-4 bg-slate-900/80 px-4 py-2 rounded-xl border border-slate-800 flex-1 max-w-md">
+                <i class="fa-solid fa-fire text-amber-500 text-lg"></i>
+                <div class="flex-1">
+                    <div class="flex justify-between text-xs font-semibold mb-1">
+                        <span class="text-slate-300">Công suất cấp nhiệt đun:</span>
+                        <span id="powerVal" class="text-amber-400 font-bold">800 W</span>
+                    </div>
+                    <input type="range" id="sliderPower" min="200" max="2000" step="100" value="800" oninput="onPowerChange()" class="w-full accent-amber-500 cursor-pointer">
+                </div>
+            </div>
+
+            <!-- Speed Multiplier -->
+            <div class="flex items-center gap-2 bg-slate-900/80 px-3 py-2 rounded-xl border border-slate-800 text-xs font-semibold">
+                <span class="text-slate-400">Tốc độ:</span>
+                <button onclick="setSpeed(1)" id="spd1" class="px-2 py-1 rounded bg-purple-600 text-white font-bold">1x</button>
+                <button onclick="setSpeed(2)" id="spd2" class="px-2 py-1 rounded text-slate-400 hover:text-white">2x</button>
+                <button onclick="setSpeed(4)" id="spd4" class="px-2 py-1 rounded text-slate-400 hover:text-white">4x</button>
+            </div>
+        </div>
+
+        <div id="simGrid" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+            <!-- PANEL 1: CRYSTALLINE SOLID 1 (ICE / GALLIUM) -->
+            <div id="panelMat1" class="glass-panel rounded-2xl p-5 border border-sky-900/40 glow-ice flex flex-col justify-between space-y-4">
+                <div class="flex justify-between items-center border-b border-slate-800 pb-3 gap-2">
+                    <div class="flex items-center gap-2 flex-1">
+                        <span class="px-2.5 py-1 bg-sky-500/20 text-sky-400 text-xs font-extrabold rounded-md border border-sky-500/30 whitespace-nowrap">
+                            CHẤT TÍNH 1
+                        </span>
+                        <select id="selectMat1" onchange="onMat1Change()" class="bg-slate-900 text-sky-300 font-bold text-sm rounded-lg border border-sky-700/50 p-1.5 focus:ring-2 focus:ring-sky-500 outline-none w-full cursor-pointer">
+                            <option value="ice">🧊 Nước Đá (Nóng chảy 0°C)</option>
+                            <option value="gallium">🪙 Gallium (Nóng chảy 29.8°C)</option>
+                        </select>
+                    </div>
+                    <span id="mat1StateBadge" class="text-xs px-2.5 py-1 rounded-full font-bold bg-sky-900/50 text-sky-300 border border-sky-700 whitespace-nowrap">
+                        Thường rắn (-15.0 °C)
+                    </span>
+                </div>
+
+                <!-- Canvas Visual Beaker -->
+                <div class="relative bg-slate-950/90 rounded-xl p-3 border border-slate-800 flex justify-center items-center min-h-[260px]">
+                    <canvas id="canvasMat1" width="300" height="240" class="w-full max-w-[300px]"></canvas>
+
+                    <!-- Thermometer Readout -->
+                    <div class="absolute top-3 right-3 bg-slate-900/90 border border-sky-800 px-3 py-1.5 rounded-lg text-right shadow">
+                        <div class="text-[10px] text-slate-400 uppercase tracking-wider font-bold">Nhiệt độ T</div>
+                        <div id="mat1TempReadout" class="text-xl font-black text-sky-400">-15.0 °C</div>
+                    </div>
+                </div>
+
+                <!-- Properties Bar -->
+                <div class="bg-slate-900/80 rounded-xl p-3 border border-slate-800 flex items-center justify-between text-xs">
+                    <div>
+                        <span class="text-slate-400">Độ nóng chảy $T_{\text{nc}}$:</span>
+                        <span id="mat1MeltPointLabel" class="font-bold text-white ml-1">Đúng 0°C</span>
+                    </div>
+                    <div>
+                        <span class="text-slate-400">Trạng thái tinh thể:</span>
+                        <span id="mat1MoleculeText" class="font-bold text-sky-300 ml-1">Mạng tinh thể trật tự</span>
+                    </div>
+                </div>
+
+                <!-- Start Temp Slider -->
+                <div class="bg-slate-900/90 rounded-xl p-3 border border-sky-900/40 space-y-1 text-xs">
+                    <div class="flex justify-between font-semibold items-center">
+                        <span class="text-sky-300">Nhiệt độ ban đầu T₀:</span>
+                        <div class="flex items-center gap-2">
+                            <button onclick="setMat1ToMeltTemp()" class="px-2 py-0.5 bg-sky-900/80 hover:bg-sky-800 text-sky-300 rounded border border-sky-700/60 text-[10px] font-bold transition">
+                                Đặt T₀ = T<sub>nc</sub>
+                            </button>
+                            <span id="mat1StartTempReadout" class="text-sky-400 font-bold">-15.0 °C</span>
+                        </div>
+                    </div>
+                    <input type="range" id="sliderMat1StartTemp" min="-30" max="0" step="0.1" value="-15" oninput="onMat1StartTempChange()" class="w-full accent-sky-400 cursor-pointer">
+                </div>
+            </div>
+
+            <!-- PANEL 2: LOW MELTING CRYSTALLINE SOLID 2 -->
+            <div id="panelMat2" class="glass-panel rounded-2xl p-5 border border-purple-900/40 glow-crystal flex flex-col justify-between space-y-4">
+                <div class="flex justify-between items-center border-b border-slate-800 pb-3 gap-2">
+                    <div class="flex items-center gap-2 flex-1">
+                        <span class="px-2.5 py-1 bg-purple-500/20 text-purple-400 text-xs font-extrabold rounded-md border border-purple-500/30 whitespace-nowrap">
+                            CHẤT TÍNH 2
+                        </span>
+                        <select id="selectMat2" onchange="onMat2Change()" class="bg-slate-900 text-purple-300 font-bold text-sm rounded-lg border border-purple-700/50 p-1.5 focus:ring-2 focus:ring-purple-500 outline-none w-full cursor-pointer">
+                            <option value="naphthalene">🔮 Băng Phiến / Naphtalen (Nóng chảy 80.2°C)</option>
+                            <option value="thiosulfate">💎 Thiosulfat Natri / Muối Hypo (Nóng chảy 48.5°C)</option>
+                            <option value="gallium">🪙 Kim loại Gallium (Nóng chảy 29.8°C)</option>
+                            <option value="tin">🩶 Kim loại Thiếc (Nóng chảy 232°C)</option>
+                        </select>
+                    </div>
+                    <span id="mat2StateBadge" class="text-xs px-2.5 py-1 rounded-full font-bold bg-purple-900/50 text-purple-300 border border-purple-700 whitespace-nowrap">
+                        Thường rắn (25.0 °C)
+                    </span>
+                </div>
+
+                <!-- Canvas Visual Beaker -->
+                <div class="relative bg-slate-950/90 rounded-xl p-3 border border-slate-800 flex justify-center items-center min-h-[260px]">
+                    <canvas id="canvasMat2" width="300" height="240" class="w-full max-w-[300px]"></canvas>
+
+                    <!-- Thermometer Readout -->
+                    <div class="absolute top-3 right-3 bg-slate-900/90 border border-purple-800 px-3 py-1.5 rounded-lg text-right shadow">
+                        <div class="text-[10px] text-slate-400 uppercase tracking-wider font-bold">Nhiệt độ T</div>
+                        <div id="mat2TempReadout" class="text-xl font-black text-purple-400">25.0 °C</div>
+                    </div>
+                </div>
+
+                <!-- Properties Bar -->
+                <div class="bg-slate-900/80 rounded-xl p-3 border border-slate-800 flex items-center justify-between text-xs">
+                    <div>
+                        <span class="text-slate-400">Độ nóng chảy $T_{\text{nc}}$:</span>
+                        <span id="mat2MeltPointLabel" class="font-bold text-white ml-1">Đúng 80.2°C</span>
+                    </div>
+                    <div>
+                        <span class="text-slate-400">Trạng thái tinh thể:</span>
+                        <span id="mat2MoleculeText" class="font-bold text-purple-300 ml-1">Mạng tinh thể trật tự</span>
+                    </div>
+                </div>
+
+                <!-- Start Temp Slider -->
+                <div class="bg-slate-900/90 rounded-xl p-3 border border-purple-900/40 space-y-1 text-xs">
+                    <div class="flex justify-between font-semibold items-center">
+                        <span class="text-purple-300">Nhiệt độ ban đầu T₀:</span>
+                        <div class="flex items-center gap-2">
+                            <button onclick="setMat2ToMeltTemp()" class="px-2 py-0.5 bg-purple-900/80 hover:bg-purple-800 text-purple-300 rounded border border-purple-700/60 text-[10px] font-bold transition">
+                                Đặt T₀ = T<sub>nc</sub>
+                            </button>
+                            <span id="mat2StartTempReadout" class="text-purple-400 font-bold">25.0 °C</span>
+                        </div>
+                    </div>
+                    <input type="range" id="sliderMat2StartTemp" min="0" max="80.2" step="0.1" value="25" oninput="onMat2StartTempChange()" class="w-full accent-purple-400 cursor-pointer">
+                </div>
+            </div>
+
+        </div>
+
+        <div class="glass-panel rounded-2xl p-6 border border-slate-800 space-y-4">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 border-b border-slate-800 pb-3">
+                <div>
+                    <h3 class="text-lg font-bold text-white flex items-center gap-2">
+                        <i class="fa-solid fa-chart-line text-purple-400"></i> Đồ Thị Nhiệt Độ Theo Thời Gian ($T - t$)
+                    </h3>
+                    <p class="text-xs text-slate-400">Đặc điểm cốt lõi của **Chất rắn kết tinh**: Cả 2 chất đều có **Đoạn nằm ngang (Plateau)** - nhiệt độ không đổi trong lúc tan chảy!</p>
+                </div>
+                <div class="flex items-center gap-4 text-xs font-semibold">
+                    <span class="flex items-center gap-1.5 text-sky-400">
+                        <span class="w-3 h-3 bg-sky-400 inline-block rounded-full"></span> <span id="graphLegend1">Chất 1</span>
+                    </span>
+                    <span class="flex items-center gap-1.5 text-purple-400">
+                        <span class="w-3 h-3 bg-purple-400 inline-block rounded-full"></span> <span id="graphLegend2">Chất 2</span>
+                    </span>
+                </div>
+            </div>
+
+            <div class="w-full flex justify-center">
+                <canvas id="canvasGraph" width="900" height="280" class="w-full bg-slate-950 rounded-xl border border-slate-800 p-2"></canvas>
+            </div>
+        </div>
+
+        <div class="glass-panel rounded-2xl p-6 border border-slate-800 space-y-4">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 border-b border-slate-800 pb-3">
+                <div>
+                    <h3 class="text-lg font-bold text-white flex items-center gap-2">
+                        <i class="fa-solid fa-table-cells text-emerald-400"></i> Bảng Thống Kê Tiến Trình Nóng Chảy (Khối lượng mẫu $m_0 = 200\text{g}$)
+                    </h3>
+                    <p class="text-xs text-slate-400">Cập nhật tự động các mốc nhiệt độ (°C) và khối lượng chất rắn đã hóa lỏng (g) mỗi 5 giây đun.</p>
+                </div>
+                <button onclick="clearTableData()" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 font-medium rounded-lg text-xs border border-slate-700 flex items-center gap-1">
+                    <i class="fa-solid fa-trash-can"></i> Xóa Bảng
+                </button>
+            </div>
+
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-xs text-slate-300">
+                    <thead class="bg-slate-900/90 text-slate-400 uppercase tracking-wider font-bold border-b border-slate-800">
+                        <tr>
+                            <th class="py-3 px-4">Thời gian t (s)</th>
+                            <th class="py-3 px-4 text-sky-400" id="thMat1Temp">Nhiệt độ Chất 1 (°C)</th>
+                            <th class="py-3 px-4 text-sky-400" id="thMat1Mass">Chất 1 đã tan (g / 200g)</th>
+                            <th class="py-3 px-4 text-purple-400" id="thMat2Temp">Nhiệt độ Chất 2 (°C)</th>
+                            <th class="py-3 px-4 text-purple-400" id="thMat2Mass">Chất 2 đã tan (g / 200g)</th>
+                            <th class="py-3 px-4">Nhận xét tiến trình</th>
+                        </tr>
+                    </thead>
+                    <tbody id="statsTableBody" class="divide-y divide-slate-800/60">
+                        <tr id="emptyRow">
+                            <td colspan="6" class="py-6 text-center text-slate-500 italic">
+                                Nhấn "Bắt Đầu Đun" để bắt đầu ghi chép thông số thí nghiệm tự động.
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="bg-slate-900/90 rounded-2xl p-5 border border-sky-900/40 space-y-3">
+                <h4 class="text-base font-bold text-sky-400 flex items-center gap-2">
+                    <i class="fa-solid fa-snowflake"></i> Nước Đá / Gallium ($T_{\text{nc}}$ Thấp)
+                </h4>
+                <ul class="text-xs text-slate-300 space-y-2 list-disc list-inside leading-relaxed">
+                    <li>**Kim loại Gallium ($Ga$):** Nóng chảy ở **$29.8^\circ\text{C}$** — Có thể tan chảy ngay trong lòng bàn tay hoặc dưới làn nước ấm!</li>
+                    <li>**Nước đá ($H_2O$):** Nóng chảy ở đúng **$0^\circ\text{C}$** ở áp chuẩn.</li>
+                    <li>Khi đang nóng chảy, toàn bộ nhiệt lượng dùng để bẻ gãy liên kết tinh thể rắn $\rightarrow$ Nhiệt độ giữ nguyên không tăng.</li>
+                </ul>
+            </div>
+
+            <div class="bg-slate-900/90 rounded-2xl p-5 border border-purple-900/40 space-y-3">
+                <h4 class="text-base font-bold text-purple-400 flex items-center gap-2">
+                    <i class="fa-solid fa-gem"></i> Băng Phiến / Thiosulfat Natri (Dễ Nung Chảy)
+                </h4>
+                <ul class="text-xs text-slate-300 space-y-2 list-disc list-inside leading-relaxed">
+                    <li>**Băng Phiến (Naphtalen):** Thí nghiệm kinh điển nhất trong SGK Vật lý với điểm nóng chảy cố định **$80.2^\circ\text{C}$**.</li>
+                    <li>**Thiosulfat Natri ($Na_2S_2O_3$):** Muối tinh thể nóng chảy ở **$48.5^\circ\text{C}$**.</li>
+                    <li>Đồ thị nhiệt độ luôn hiện **đoạn nằm ngang chuẩn xác** $T = T_{\text{nc}}$ trong suốt thời gian chuyển thể.</li>
+                </ul>
+            </div>
+        </div>
+
+    </main>
+
+    <footer class="border-t border-slate-800 bg-slate-900 py-4 text-center text-xs text-slate-500">
+        <p>© Mô Phỏng Thí Nghiệm Vật Lý — Sự Nóng Chảy Của Các Chất Rắn Kết Tinh</p>
+    </footer>
+
+    <script>
+        const MATERIAL_DB = {
+            ice: { name: 'Nước Đá', meltTemp: 0, cSolid: 2100, cLiquid: 4186, Lf: 334000, startTemp: -15, minStart: -30, maxStart: 0, color: '#38bdf8', fillColor: '#e0f2fe' },
+            gallium: { name: 'Gallium', meltTemp: 29.8, cSolid: 370, cLiquid: 380, Lf: 80000, startTemp: 15, minStart: 0, maxStart: 29.8, color: '#06b6d4', fillColor: '#cffafe' },
+            naphthalene: { name: 'Băng Phiến (Naphtalen)', meltTemp: 80.2, cSolid: 1700, cLiquid: 1900, Lf: 148000, startTemp: 25, minStart: 0, maxStart: 80.2, color: '#a855f7', fillColor: '#f3e8ff' },
+            thiosulfate: { name: 'Thiosulfat Natri', meltTemp: 48.5, cSolid: 1450, cLiquid: 2100, Lf: 200000, startTemp: 20, minStart: 0, maxStart: 48.5, color: '#ec4899', fillColor: '#fbcfe8' },
+            tin: { name: 'Thiếc', meltTemp: 232, cSolid: 220, cLiquid: 240, Lf: 59000, startTemp: 25, minStart: 0, maxStart: 232, color: '#94a3b8', fillColor: '#e2e8f0' }
+        };
+
+        let mat1Key = 'ice';
+        let mat2Key = 'naphthalene';
+
+        let MAT1 = { ...MATERIAL_DB.ice, mass: 0.2 };
+        let MAT2 = { ...MATERIAL_DB.naphthalene, mass: 0.2 };
+
+        let isHeating = false;
+        let simTime = 0;
+        let simSpeed = 1;
+        let mode = 'both';
+        let timerId = null;
+        let powerW = 800;
+        let lastRecordedTime = -5;
+
+        let mat1 = { temp: MAT1.startTemp, meltProgress: 0, stateText: 'THỂ RẮN' };
+        let mat2 = { temp: MAT2.startTemp, meltProgress: 0, stateText: 'THỂ RẮN' };
+
+        let graphHistory = {
+            time: [0],
+            mat1Temp: [MAT1.startTemp],
+            mat2Temp: [MAT2.startTemp]
+        };
+
+        function onMat1Change() {
+            mat1Key = document.getElementById('selectMat1').value;
+            MAT1 = { ...MATERIAL_DB[mat1Key], mass: 0.2 };
+            document.getElementById('mat1MeltPointLabel').innerText = `Đúng ${MAT1.meltTemp}°C`;
+            const slider = document.getElementById('sliderMat1StartTemp');
+            slider.min = MAT1.minStart;
+            slider.max = MAT1.maxStart;
+            slider.value = MAT1.startTemp;
+            resetSim();
+        }
+
+        function onMat2Change() {
+            mat2Key = document.getElementById('selectMat2').value;
+            MAT2 = { ...MATERIAL_DB[mat2Key], mass: 0.2 };
+            document.getElementById('mat2MeltPointLabel').innerText = `Đúng ${MAT2.meltTemp}°C`;
+            const slider = document.getElementById('sliderMat2StartTemp');
+            slider.min = MAT2.minStart;
+            slider.max = MAT2.maxStart;
+            slider.value = MAT2.startTemp;
+            resetSim();
+        }
+
+        function setMat1ToMeltTemp() {
+            const slider = document.getElementById('sliderMat1StartTemp');
+            slider.value = MAT1.meltTemp;
+            onMat1StartTempChange();
+        }
+
+        function setMat2ToMeltTemp() {
+            const slider = document.getElementById('sliderMat2StartTemp');
+            slider.value = MAT2.meltTemp;
+            onMat2StartTempChange();
+        }
+
+        function onMat1StartTempChange() {
+            const v = parseFloat(document.getElementById('sliderMat1StartTemp').value);
+            MAT1.startTemp = v;
+            document.getElementById('mat1StartTempReadout').innerText = `${v.toFixed(1)} °C`;
+            if (!isHeating && simTime === 0) {
+                mat1.temp = v;
+                graphHistory.mat1Temp[0] = v;
+                updateReadouts();
+                drawBeakers();
+                drawGraph();
+            }
+        }
+
+        function onMat2StartTempChange() {
+            const v = parseFloat(document.getElementById('sliderMat2StartTemp').value);
+            MAT2.startTemp = v;
+            document.getElementById('mat2StartTempReadout').innerText = `${v.toFixed(1)} °C`;
+            if (!isHeating && simTime === 0) {
+                mat2.temp = v;
+                graphHistory.mat2Temp[0] = v;
+                updateReadouts();
+                drawBeakers();
+                drawGraph();
+            }
+        }
+
+        function onPowerChange() {
+            powerW = parseInt(document.getElementById('sliderPower').value);
+            document.getElementById('powerVal').innerText = `${powerW} W`;
+        }
+
+        function setSpeed(sp) {
+            simSpeed = sp;
+            [1, 2, 4].forEach(s => {
+                const btn = document.getElementById(`spd${s}`);
+                if (s === sp) {
+                    btn.className = 'px-2 py-1 rounded bg-purple-600 text-white font-bold';
+                } else {
+                    btn.className = 'px-2 py-1 rounded text-slate-400 hover:text-white';
+                }
+            });
+        }
+
+        function setMode(m) {
+            mode = m;
+            const p1 = document.getElementById('panelMat1');
+            const p2 = document.getElementById('panelMat2');
+
+            document.getElementById('tabBoth').className = m === 'both' ? 'px-4 py-2 rounded-lg text-xs font-bold transition bg-purple-600 text-white shadow' : 'px-4 py-2 rounded-lg text-xs font-bold transition text-slate-400 hover:text-white';
+            document.getElementById('tabIce').className = m === 'mat1' ? 'px-4 py-2 rounded-lg text-xs font-bold transition bg-sky-600 text-white shadow' : 'px-4 py-2 rounded-lg text-xs font-bold transition text-slate-400 hover:text-white';
+            document.getElementById('tabCrystal').className = m === 'mat2' ? 'px-4 py-2 rounded-lg text-xs font-bold transition bg-purple-600 text-white shadow' : 'px-4 py-2 rounded-lg text-xs font-bold transition text-slate-400 hover:text-white';
+
+            if (m === 'both') {
+                p1.style.display = 'flex';
+                p2.style.display = 'flex';
+            } else if (m === 'mat1') {
+                p1.style.display = 'flex';
+                p2.style.display = 'none';
+            } else {
+                p1.style.display = 'none';
+                p2.style.display = 'flex';
+            }
+            drawGraph();
+        }
+
+        function toggleHeating() {
+            isHeating = !isHeating;
+            const btn = document.getElementById('btnPlay');
+            const icon = document.getElementById('playIcon');
+            const text = document.getElementById('playText');
+
+            if (isHeating) {
+                btn.className = 'px-5 py-2 bg-amber-600 hover:bg-amber-500 text-white font-bold rounded-xl text-sm transition flex items-center gap-2 shadow-lg shadow-amber-900/40';
+                icon.className = 'fa-solid fa-pause';
+                text.innerText = 'Tạm Dừng';
+                timerId = setInterval(simulationStep, 100);
+            } else {
+                btn.className = 'px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-sm transition flex items-center gap-2 shadow-lg shadow-emerald-900/40';
+                icon.className = 'fa-solid fa-play';
+                text.innerText = 'Tiếp Tục Đun';
+                clearInterval(timerId);
+            }
+        }
+
+        function simulationStep() {
+            const dt = 0.2 * simSpeed; // 0.2s per tick
+            simTime += dt;
+
+            // Physics Heat Transfer for Crystalline Solid 1
+            stepCrystallinePhysics(MAT1, mat1, dt);
+
+            // Physics Heat Transfer for Crystalline Solid 2
+            stepCrystallinePhysics(MAT2, mat2, dt);
+
+            // History logging for graph
+            if (simTime - graphHistory.time[graphHistory.time.length - 1] >= 0.5) {
+                graphHistory.time.push(simTime);
+                graphHistory.mat1Temp.push(mat1.temp);
+                graphHistory.mat2Temp.push(mat2.temp);
+            }
+
+            // Auto Table Log Every 5 Seconds
+            if (simTime - lastRecordedTime >= 5.0) {
+                lastRecordedTime = Math.floor(simTime / 5) * 5;
+                addTableRecordRow(lastRecordedTime);
+            }
+
+            updateReadouts();
+            drawBeakers();
+            drawGraph();
+        }
+
+        function stepCrystallinePhysics(params, state, dt) {
+            const energyInput = powerW * dt; // Q = P * dt
+
+            // Phase 1: Solid warming (T < T_melt)
+            if (state.temp < params.meltTemp) {
+                const dT = energyInput / (params.mass * params.cSolid);
+                state.temp += dT;
+                if (state.temp >= params.meltTemp) {
+                    state.temp = params.meltTemp;
+                }
+                state.stateText = `Thường rắn (${state.temp.toFixed(1)}°C)`;
+            }
+            // Phase 2: Melting Plateau (T == T_melt, T constant)
+            else if (state.temp === params.meltTemp && state.meltProgress < 1.0) {
+                const dm = energyInput / params.Lf;
+                state.meltProgress += dm / params.mass;
+                if (state.meltProgress >= 1.0) {
+                    state.meltProgress = 1.0;
+                }
+                state.stateText = `Đang nóng chảy (${(state.meltProgress * 100).toFixed(0)}%)`;
+            }
+            // Phase 3: Liquid heating (T > T_melt)
+            else {
+                const dT = energyInput / (params.mass * params.cLiquid);
+                state.temp += dT;
+                state.stateText = `Đã hóa lỏng (${state.temp.toFixed(1)}°C)`;
+            }
+        }
+
+        function resetSim() {
+            if (isHeating) toggleHeating();
+            simTime = 0;
+            lastRecordedTime = -5;
+
+            mat1 = { temp: MAT1.startTemp, meltProgress: 0, stateText: 'THỂ RẮN' };
+            mat2 = { temp: MAT2.startTemp, meltProgress: 0, stateText: 'THỂ RẮN' };
+
+            graphHistory = {
+                time: [0],
+                mat1Temp: [MAT1.startTemp],
+                mat2Temp: [MAT2.startTemp]
+            };
+
+            // Clear table
+            const tbody = document.getElementById('statsTableBody');
+            tbody.innerHTML = `
+                <tr id="emptyRow">
+                    <td colspan="6" class="py-6 text-center text-slate-500 italic">
+                        Nhấn "Bắt Đầu Đun" để bắt đầu ghi chép thông số thí nghiệm tự động.
+                    </td>
+                </tr>`;
+
+            updateReadouts();
+            drawBeakers();
+            drawGraph();
+        }
+
+        function updateReadouts() {
+            // Material 1 UI
+            document.getElementById('mat1TempReadout').innerText = `${mat1.temp.toFixed(1)} °C`;
+            document.getElementById('mat1StateBadge').innerText = mat1.stateText;
+            document.getElementById('thMat1Temp').innerText = `Nhiệt độ ${MAT1.name} (°C)`;
+            document.getElementById('thMat1Mass').innerText = `${MAT1.name} đã tan (g / 200g)`;
+            document.getElementById('graphLegend1').innerText = `${MAT1.name} (${MAT1.meltTemp}°C)`;
+
+            if (mat1.temp < MAT1.meltTemp) {
+                document.getElementById('mat1MoleculeText').innerText = 'Mạng tinh thể trật tự';
+                document.getElementById('mat1MoleculeText').className = 'font-bold text-sky-300 ml-1';
+            } else if (mat1.meltProgress < 1.0) {
+                document.getElementById('mat1MoleculeText').innerText = 'Mạng tinh thể đang bẻ gãy';
+                document.getElementById('mat1MoleculeText').className = 'font-bold text-amber-400 ml-1 animate-pulse';
+            } else {
+                document.getElementById('mat1MoleculeText').innerText = 'Phân tử chuyển động tự do';
+                document.getElementById('mat1MoleculeText').className = 'font-bold text-emerald-400 ml-1';
+            }
+
+            // Material 2 UI
+            document.getElementById('mat2TempReadout').innerText = `${mat2.temp.toFixed(1)} °C`;
+            document.getElementById('mat2StateBadge').innerText = mat2.stateText;
+            document.getElementById('thMat2Temp').innerText = `Nhiệt độ ${MAT2.name} (°C)`;
+            document.getElementById('thMat2Mass').innerText = `${MAT2.name} đã tan (g / 200g)`;
+            document.getElementById('graphLegend2').innerText = `${MAT2.name} (${MAT2.meltTemp}°C)`;
+
+            if (mat2.temp < MAT2.meltTemp) {
+                document.getElementById('mat2MoleculeText').innerText = 'Mạng tinh thể trật tự';
+                document.getElementById('mat2MoleculeText').className = 'font-bold text-purple-300 ml-1';
+            } else if (mat2.meltProgress < 1.0) {
+                document.getElementById('mat2MoleculeText').innerText = 'Mạng tinh thể đang bẻ gãy';
+                document.getElementById('mat2MoleculeText').className = 'font-bold text-amber-400 ml-1 animate-pulse';
+            } else {
+                document.getElementById('mat2MoleculeText').innerText = 'Phân tử chuyển động tự do';
+                document.getElementById('mat2MoleculeText').className = 'font-bold text-emerald-400 ml-1';
+            }
+        }
+
+        function drawBeakers() {
+            drawBeakerCanvas('canvasMat1', MAT1, mat1);
+            drawBeakerCanvas('canvasMat2', MAT2, mat2);
+        }
+
+        function drawBeakerCanvas(canvasId, params, state) {
+            const cvs = document.getElementById(canvasId);
+            const ctx = cvs.getContext('2d');
+            ctx.clearRect(0, 0, cvs.width, cvs.height);
+
+            const w = cvs.width;
+            const h = cvs.height;
+
+            // Flame burner underneath
+            if (isHeating) {
+                const flameY = h - 20;
+                ctx.fillStyle = '#f97316';
+                ctx.beginPath();
+                ctx.moveTo(w / 2 - 25, flameY);
+                ctx.quadraticCurveTo(w / 2, flameY - 30 + Math.sin(simTime * 20) * 5, w / 2 + 25, flameY);
+                ctx.fill();
+
+                ctx.fillStyle = '#fef08a';
+                ctx.beginPath();
+                ctx.moveTo(w / 2 - 12, flameY);
+                ctx.quadraticCurveTo(w / 2, flameY - 20 + Math.sin(simTime * 25) * 4, w / 2 + 12, flameY);
+                ctx.fill();
+            }
+
+            // Glass Beaker outline
+            const bX = 60;
+            const bY = 40;
+            const bW = 180;
+            const bH = 160;
+
+            ctx.strokeStyle = '#64748b';
+            ctx.lineWidth = 4;
+            ctx.beginPath();
+            ctx.moveTo(bX, bY);
+            ctx.lineTo(bX, bY + bH);
+            ctx.lineTo(bX + bW, bY + bH);
+            ctx.lineTo(bX + bW, bY);
+            ctx.stroke();
+
+            // Liquid melted layer at bottom
+            const liquidHeight = state.meltProgress * (bH - 30);
+            if (liquidHeight > 0) {
+                ctx.fillStyle = params.fillColor + 'cc';
+                ctx.fillRect(bX + 3, bY + bH - liquidHeight, bW - 6, liquidHeight);
+            }
+
+            // Remaining solid crystal block floating / sitting
+            const solidRatio = 1 - state.meltProgress;
+            if (solidRatio > 0.02) {
+                const blockW = (bW - 30) * Math.sqrt(solidRatio);
+                const blockH = (bH - 50) * Math.sqrt(solidRatio);
+                const blockX = bX + (bW - blockW) / 2;
+                const blockY = bY + bH - liquidHeight - blockH;
+
+                ctx.fillStyle = params.color;
+                ctx.beginPath();
+                ctx.roundRect(blockX, blockY, blockW, blockH, 8);
+                ctx.fill();
+                ctx.strokeStyle = '#ffffff66';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+
+                // Draw Ordered Crystal Lattice Dots
+                ctx.fillStyle = '#ffffff';
+                const rows = 4;
+                const cols = 4;
+                for (let r = 0; r < rows; r++) {
+                    for (let c = 0; c < cols; c++) {
+                        let dx = 0, dy = 0;
+                        if (state.temp === params.meltTemp) {
+                            // Vibrating violently before lattice break
+                            dx = (Math.random() - 0.5) * 3;
+                            dy = (Math.random() - 0.5) * 3;
+                        }
+                        const px = blockX + (c + 0.5) * (blockW / cols) + dx;
+                        const py = blockY + (r + 0.5) * (blockH / rows) + dy;
+                        ctx.beginPath();
+                        ctx.arc(px, py, 3, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                }
+            }
+
+            // Thermometer in beaker
+            ctx.fillStyle = '#94a3b8';
+            ctx.fillRect(bX + 20, bY - 15, 8, bH - 10);
+            ctx.fillStyle = '#ef4444';
+            ctx.beginPath();
+            ctx.arc(bX + 24, bY + bH - 15, 10, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        function drawGraph() {
+            const cvs = document.getElementById('canvasGraph');
+            const ctx = cvs.getContext('2d');
+            ctx.clearRect(0, 0, cvs.width, cvs.height);
+
+            const padL = 50;
+            const padR = 30;
+            const padT = 30;
+            const padB = 40;
+
+            const w = cvs.width - padL - padR;
+            const h = cvs.height - padT - padB;
+
+            const minT = Math.min(MAT1.startTemp, MAT2.startTemp, 0) - 10;
+            const maxT = Math.max(MAT1.meltTemp + 20, MAT2.meltTemp + 20, 90);
+            const maxTime = Math.max(simTime, 60);
+
+            // Grid
+            ctx.strokeStyle = '#334155';
+            ctx.lineWidth = 1;
+
+            // Material 1 Melting Plateau Reference Line
+            const yMelt1 = padT + h - ((MAT1.meltTemp - minT) / (maxT - minT)) * h;
+            ctx.strokeStyle = MAT1.color + '66';
+            ctx.setLineDash([4, 4]);
+            ctx.beginPath();
+            ctx.moveTo(padL, yMelt1);
+            ctx.lineTo(cvs.width - padR, yMelt1);
+            ctx.stroke();
+            ctx.fillStyle = MAT1.color;
+            ctx.font = '10px Inter';
+            ctx.fillText(`${MAT1.meltTemp}°C (NC ${MAT1.name})`, padL + 10, yMelt1 - 4);
+
+            // Material 2 Melting Plateau Reference Line
+            const yMelt2 = padT + h - ((MAT2.meltTemp - minT) / (maxT - minT)) * h;
+            ctx.strokeStyle = MAT2.color + '66';
+            ctx.beginPath();
+            ctx.moveTo(padL, yMelt2);
+            ctx.lineTo(cvs.width - padR, yMelt2);
+            ctx.stroke();
+            ctx.fillStyle = MAT2.color;
+            ctx.fillText(`${MAT2.meltTemp}°C (NC ${MAT2.name})`, padL + 180, yMelt2 - 4);
+
+            ctx.setLineDash([]);
+
+            // Axes
+            ctx.strokeStyle = '#64748b';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(padL, padT);
+            ctx.lineTo(padL, padT + h);
+            ctx.lineTo(padL + w, padT + h);
+            ctx.stroke();
+
+            // Axis labels
+            ctx.fillStyle = '#94a3b8';
+            ctx.font = '11px Inter';
+            ctx.fillText('Thời gian t (s)', padL + w / 2 - 30, cvs.height - 10);
+
+            // Y Ticks
+            const step = (maxT - minT) / 5;
+            for (let i = 0; i <= 5; i++) {
+                const tempVal = Math.round(minT + i * step);
+                const y = padT + h - ((tempVal - minT) / (maxT - minT)) * h;
+                ctx.fillStyle = '#64748b';
+                ctx.fillText(`${tempVal}°C`, padL - 38, y + 4);
+            }
+
+            // Curve 1
+            if (mode === 'both' || mode === 'mat1') {
+                ctx.strokeStyle = MAT1.color;
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                graphHistory.time.forEach((t, i) => {
+                    const x = padL + (t / maxTime) * w;
+                    const y = padT + h - ((graphHistory.mat1Temp[i] - minT) / (maxT - minT)) * h;
+                    if (i === 0) ctx.moveTo(x, y);
+                    else ctx.lineTo(x, y);
+                });
+                ctx.stroke();
+            }
+
+            // Curve 2
+            if (mode === 'both' || mode === 'mat2') {
+                ctx.strokeStyle = MAT2.color;
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                graphHistory.time.forEach((t, i) => {
+                    const x = padL + (t / maxTime) * w;
+                    const y = padT + h - ((graphHistory.mat2Temp[i] - minT) / (maxT - minT)) * h;
+                    if (i === 0) ctx.moveTo(x, y);
+                    else ctx.lineTo(x, y);
+                });
+                ctx.stroke();
+            }
+        }
+
+        function addTableRecordRow(tSec) {
+            const tbody = document.getElementById('statsTableBody');
+            const emptyRow = document.getElementById('emptyRow');
+            if (emptyRow) emptyRow.remove();
+
+            const mat1MeltGrams = (mat1.meltProgress * MAT1.mass * 1000).toFixed(1);
+            const mat2MeltGrams = (mat2.meltProgress * MAT2.mass * 1000).toFixed(1);
+
+            let note = 'Đang tăng nhiệt độ rắn';
+            if (mat1.temp === MAT1.meltTemp && mat1.meltProgress < 1.0) {
+                note = `${MAT1.name} đang ở đoạn nằm ngang (${(mat1.meltProgress * 100).toFixed(0)}%)`;
+            } else if (mat2.temp === MAT2.meltTemp && mat2.meltProgress < 1.0) {
+                note = `${MAT2.name} đang ở đoạn nằm ngang (${(mat2.meltProgress * 100).toFixed(0)}%)`;
+            } else if (mat1.meltProgress >= 1.0 && mat2.meltProgress >= 1.0) {
+                note = 'Cả 2 chất đã hóa lỏng hoàn toàn';
+            }
+
+            const tr = document.createElement('tr');
+            tr.className = 'hover:bg-slate-900/50 transition';
+            tr.innerHTML = `
+                <td class="py-2.5 px-4 font-bold text-slate-200">${tSec}s</td>
+                <td class="py-2.5 px-4 font-semibold text-sky-400">${mat1.temp.toFixed(1)} °C</td>
+                <td class="py-2.5 px-4 text-sky-300">${mat1MeltGrams} g</td>
+                <td class="py-2.5 px-4 font-semibold text-purple-400">${mat2.temp.toFixed(1)} °C</td>
+                <td class="py-2.5 px-4 text-purple-300">${mat2MeltGrams} g</td>
+                <td class="py-2.5 px-4 text-slate-400 italic">${note}</td>
+            `;
+            tbody.insertBefore(tr, tbody.firstChild);
+        }
+
+        function clearTableData() {
+            const tbody = document.getElementById('statsTableBody');
+            tbody.innerHTML = `
+                <tr id="emptyRow">
+                    <td colspan="6" class="py-6 text-center text-slate-500 italic">
+                        Nhấn "Bắt Đầu Đun" để bắt đầu ghi chép thông số thí nghiệm tự động.
+                    </td>
+                </tr>`;
+        }
+
+        window.onload = function () {
+            onMat1StartTempChange();
+            onMat2StartTempChange();
+            updateReadouts();
+            drawBeakers();
+            drawGraph();
+        };
+    </script>
+</body>
+</html>
